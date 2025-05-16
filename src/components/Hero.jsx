@@ -14,6 +14,7 @@ const Hero = () => {
   const [uploading, setUploading] = useState(false);
   const [user, setUser] = useState(null);
   const [features, setFeatures] = useState(null);
+  const [classification, setClassification] = useState(null);
   const [showFeatures, setShowFeatures] = useState(false);
   
   useEffect(() => {
@@ -49,7 +50,7 @@ const Hero = () => {
           const response = await imageService.uploadImage(formData);
           setUploadStatus('Image uploaded successfully!');
           
-          // Store the features from the response
+          // Store the features and classification from the response
           console.log('Response from server:', response);
           if (response.features) {
             console.log('Features received:', response.features);
@@ -57,6 +58,13 @@ const Hero = () => {
             setShowFeatures(true);
           } else {
             console.log('No features in response');
+          }
+          
+          if (response.classification) {
+            console.log('Classification received:', response.classification);
+            setClassification(response.classification);
+          } else {
+            console.log('No classification in response');
           }
           
           alert('Image uploaded successfully!');
@@ -84,9 +92,9 @@ const Hero = () => {
     // Keep all the existing styles
     container: {
       position: "relative",
-      height: "100vh",
+      minHeight: "100vh",
       width: "100%",
-      overflow: "hidden"
+      overflow: "auto"
     },
     imageContainer: {
       position: "absolute",
@@ -114,7 +122,9 @@ const Hero = () => {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      height: "100%"
+      minHeight: "100vh",
+      paddingTop: "30px",
+      paddingBottom: "30px"
     },
     box: {
       maxWidth: "42rem",
@@ -124,7 +134,8 @@ const Hero = () => {
       backdropFilter: "blur(8px)",
       borderRadius: "16px",
       boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-      textAlign: "center"
+      textAlign: "center",
+      overflowY: "visible"
     },
     heading: {
       fontSize: "2.25rem",
@@ -194,6 +205,25 @@ const Hero = () => {
             onChange={handleFileChange}
           />
           
+          {selectedImage && (
+            <div style={{ 
+              marginTop: '20px', 
+              textAlign: 'center',
+              padding: '10px'
+            }}>
+              <img 
+                src={selectedImage} 
+                alt="Selected skin image" 
+                style={{
+                  maxWidth: '300px',
+                  maxHeight: '300px',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+                }}
+              />
+            </div>
+          )}
+          
           {showFeatures && features && (
             <div style={{
               marginTop: '20px',
@@ -201,7 +231,7 @@ const Hero = () => {
               backgroundColor: '#f8f9fa',
               borderRadius: '8px',
               textAlign: 'left',
-              maxHeight: '400px',
+              maxHeight: '500px',
               overflowY: 'auto'
             }}>
               <h3 style={{ marginBottom: '15px', color: '#333', textAlign: 'center' }}>Dermatological Features Analysis</h3>
@@ -366,6 +396,147 @@ const Hero = () => {
                     Black {features.Black ? '✓' : ''}
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Display Classification Results */}
+          {classification && classification.success && (
+            <div style={{
+              marginTop: '20px',
+              marginBottom: '20px',
+              padding: '15px',
+              backgroundColor: '#f0f7ff',
+              borderRadius: '8px',
+              textAlign: 'left',
+              maxHeight: '500px',
+              overflowY: 'auto',
+              border: '1px solid #cce5ff'
+            }}>
+              <h3 style={{ marginBottom: '15px', color: '#0056b3', textAlign: 'center' }}>AI Classification Results</h3>
+              
+              {/* Display Grad-CAM Visualization */}
+              {classification.gradcam && classification.gradcam.success && (
+                <div style={{ marginBottom: '20px' }}>
+                  <h4 style={{ borderBottom: '1px solid #cce5ff', paddingBottom: '5px', color: '#0056b3' }}>AI Visualization (Grad-CAM)</h4>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ flex: '1 1 48%', minWidth: '250px' }}>
+                      <p style={{ textAlign: 'center', fontWeight: 'bold', marginBottom: '10px', fontSize: '0.9rem' }}>Original Image</p>
+                      <img 
+                        src={`data:image/png;base64,${classification.gradcam.original_image}`} 
+                        alt="Original skin lesion" 
+                        style={{ width: '100%', borderRadius: '8px', border: '1px solid #ddd' }}
+                      />
+                    </div>
+                    <div style={{ flex: '1 1 48%', minWidth: '250px' }}>
+                      <p style={{ textAlign: 'center', fontWeight: 'bold', marginBottom: '10px', fontSize: '0.9rem' }}>Grad-CAM Heatmap</p>
+                      <img 
+                        src={`data:image/png;base64,${classification.gradcam.gradcam_image}`} 
+                        alt="Grad-CAM visualization" 
+                        style={{ width: '100%', borderRadius: '8px', border: '1px solid #ddd' }}
+                      />
+                      <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '5px', textAlign: 'center' }}>
+                        Highlighted areas show regions that influenced the AI's decision
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Display Top 3 Classifications */}
+              <div style={{ marginBottom: '20px' }}>
+                <h4 style={{ borderBottom: '1px solid #cce5ff', paddingBottom: '5px', color: '#0056b3' }}>Diagnosis Prediction</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+                  {classification.classification.map((result, index) => (
+                    <div key={index} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '10px',
+                      backgroundColor: index === 0 ? '#e6f3ff' : '#f8f9fa',
+                      borderRadius: '5px',
+                      border: index === 0 ? '1px solid #b3d7ff' : '1px solid #e9ecef'
+                    }}>
+                      <div style={{
+                        width: '30px',
+                        height: '30px',
+                        borderRadius: '50%',
+                        backgroundColor: index === 0 ? '#007bff' : index === 1 ? '#6c757d' : '#adb5bd',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontWeight: 'bold',
+                        marginRight: '15px'
+                      }}>
+                        {result.rank}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 'bold', color: index === 0 ? '#0056b3' : '#343a40' }}>
+                          {result.class_name}
+                        </div>
+                        <div style={{ fontSize: '0.9rem', color: '#6c757d' }}>
+                          Code: {result.class_code}
+                        </div>
+                      </div>
+                      <div style={{
+                        backgroundColor: 
+                          result.confidence_percent > 85 ? '#28a745' : 
+                          result.confidence_percent > 60 ? '#ffc107' : '#dc3545',
+                        color: 'white',
+                        padding: '5px 10px',
+                        borderRadius: '20px',
+                        fontSize: '0.9rem',
+                        fontWeight: 'bold'
+                      }}>
+                        {result.confidence_percent}%
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Display Confidence Level and Recommendation */}
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ borderBottom: '1px solid #cce5ff', paddingBottom: '5px', color: '#0056b3' }}>Clinical Assessment</h4>
+                <div style={{
+                  padding: '15px',
+                  backgroundColor: 
+                    classification.confidence_level === 'high' ? '#e8f5e9' : 
+                    classification.confidence_level === 'medium' ? '#fff8e1' : '#ffebee',
+                  borderRadius: '5px',
+                  marginTop: '10px',
+                  border: 
+                    classification.confidence_level === 'high' ? '1px solid #c8e6c9' : 
+                    classification.confidence_level === 'medium' ? '1px solid #ffecb3' : '1px solid #ffcdd2'
+                }}>
+                  <div style={{ 
+                    fontWeight: 'bold', 
+                    marginBottom: '10px',
+                    color: 
+                      classification.confidence_level === 'high' ? '#2e7d32' : 
+                      classification.confidence_level === 'medium' ? '#f57f17' : '#c62828'
+                  }}>
+                    {classification.confidence_level === 'high' ? 'High Confidence Assessment' : 
+                     classification.confidence_level === 'medium' ? 'Medium Confidence Assessment' : 
+                     'Low Confidence Assessment'}
+                  </div>
+                  <div style={{ lineHeight: '1.5' }}>
+                    {classification.recommendation}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Disclaimer */}
+              <div style={{ 
+                marginTop: '20px', 
+                padding: '10px', 
+                backgroundColor: '#f8d7da', 
+                borderRadius: '5px',
+                border: '1px solid #f5c6cb',
+                fontSize: '0.9rem',
+                color: '#721c24'
+              }}>
+                <strong>DISCLAIMER:</strong> {classification.disclaimer}
               </div>
             </div>
           )}

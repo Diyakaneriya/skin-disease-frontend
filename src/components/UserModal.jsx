@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import './UserModal.css';
+import './form-validation.css';
 import { authService } from '../services/api'; // Import the service
 
 const UserModal = ({ isOpen, onClose }) => {
@@ -13,12 +14,141 @@ const UserModal = ({ isOpen, onClose }) => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('patient');
   const [degree, setDegree] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({
+    username: '',
+    email: '',
+    password: '',
+    degree: ''
+  });
   const fileInputRef = useRef(null);
+
+  // Validation functions
+  const validateUsername = (name) => {
+    return name.trim().length >= 2;
+  };
+
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePassword = (password) => {
+    return password.length >= 6;
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+  const handleUsernameChange = (e) => {
+    const value = e.target.value;
+    setUsername(value);
+    
+    if (!value) {
+      setValidationErrors(prev => ({ ...prev, username: 'Username is required' }));
+    } else if (!validateUsername(value)) {
+      setValidationErrors(prev => ({ ...prev, username: 'Username must be at least 2 characters' }));
+    } else {
+      setValidationErrors(prev => ({ ...prev, username: '' }));
+    }
+  };
+
+  const handleEmailChange = (e) => {
+    const value = e.target.value;
+    setEmail(value);
+    
+    if (!value) {
+      setValidationErrors(prev => ({ ...prev, email: 'Email is required' }));
+    } else if (!validateEmail(value)) {
+      setValidationErrors(prev => ({ ...prev, email: 'Please enter a valid email address' }));
+    } else {
+      setValidationErrors(prev => ({ ...prev, email: '' }));
+    }
+  };
+
+  const handlePasswordChange = (e) => {
+    const value = e.target.value;
+    setPassword(value);
+    
+    if (!value) {
+      setValidationErrors(prev => ({ ...prev, password: 'Password is required' }));
+    } else if (!validatePassword(value)) {
+      setValidationErrors(prev => ({ ...prev, password: 'Password must be at least 6 characters' }));
+    } else {
+      setValidationErrors(prev => ({ ...prev, password: '' }));
+    }
+  };
+
+  const handleFileChange = (e) => {
+    if (e.target.files.length > 0) {
+      setDegree(e.target.files[0]);
+      setValidationErrors(prev => ({ ...prev, degree: '' }));
+    } else {
+      setDegree(null);
+      if (role === 'doctor') {
+        setValidationErrors(prev => ({ ...prev, degree: 'Please upload your degree certificate' }));
+      }
+    }
+  };
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate fields before submission
+    let hasErrors = false;
+    const newValidationErrors = { ...validationErrors };
+    
+    if (!isLogin) {
+      // Validate username for signup
+      if (!username) {
+        newValidationErrors.username = 'Username is required';
+        hasErrors = true;
+      } else if (!validateUsername(username)) {
+        newValidationErrors.username = 'Username must be at least 2 characters';
+        hasErrors = true;
+      } else {
+        newValidationErrors.username = '';
+      }
+      
+      // Validate degree for doctor role
+      if (role === 'doctor' && !degree) {
+        newValidationErrors.degree = 'Please upload your degree certificate';
+        hasErrors = true;
+      } else {
+        newValidationErrors.degree = '';
+      }
+    }
+    
+    // Always validate email and password
+    if (!email) {
+      newValidationErrors.email = 'Email is required';
+      hasErrors = true;
+    } else if (!validateEmail(email)) {
+      newValidationErrors.email = 'Please enter a valid email address';
+      hasErrors = true;
+    } else {
+      newValidationErrors.email = '';
+    }
+    
+    if (!password) {
+      newValidationErrors.password = 'Password is required';
+      hasErrors = true;
+    } else if (!validatePassword(password)) {
+      newValidationErrors.password = 'Password must be at least 6 characters';
+      hasErrors = true;
+    } else {
+      newValidationErrors.password = '';
+    }
+    
+    setValidationErrors(newValidationErrors);
+    
+    if (hasErrors) {
+      return;
+    }
+    
     setLoading(true);
     setError('');
     
@@ -87,20 +217,26 @@ const UserModal = ({ isOpen, onClose }) => {
                 type="email" 
                 id="email" 
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={handleEmailChange}
+                className={validationErrors.email ? 'input-error' : ''}
                 required 
               />
+              {validationErrors.email && <div className="error-text">{validationErrors.email}</div>}
             </>
           ) : (
             <>
               <label htmlFor="username">Username:</label>
-              <input 
-                type="text" 
-                id="username" 
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required 
-              />
+              <div className="form-group">
+                <input 
+                  type="text" 
+                  id="username" 
+                  value={username}
+                  onChange={handleUsernameChange}
+                  className={validationErrors.username ? 'input-error' : ''}
+                  required 
+                />
+                {validationErrors.username && <div className="error-text">{validationErrors.username}</div>}
+              </div>
             </>
           )}
           
@@ -111,9 +247,11 @@ const UserModal = ({ isOpen, onClose }) => {
                 type="email" 
                 id="email" 
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={handleEmailChange}
+                className={validationErrors.email ? 'input-error' : ''}
                 required 
               />
+              {validationErrors.email && <div className="error-text">{validationErrors.email}</div>}
               
               {/* Role Selection */}
               <div className="role-selection">
@@ -164,10 +302,12 @@ const UserModal = ({ isOpen, onClose }) => {
                     id="degree"
                     ref={fileInputRef}
                     accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(e) => e.target.files.length > 0 ? setDegree(e.target.files[0]) : setDegree(null)}
+                    onChange={handleFileChange}
+                    className={validationErrors.degree ? 'input-error' : ''}
                     required
                     style={{display: 'block', width: '100%', marginTop: '10px', marginBottom: '10px'}}
                   />
+                  {validationErrors.degree && <div className="error-text">{validationErrors.degree}</div>}
                   <small style={{display: 'block', color: '#666'}}>Accepted formats: PDF, JPG, JPEG, PNG (Max: 5MB)</small>
                 </div>
               )}
@@ -175,13 +315,26 @@ const UserModal = ({ isOpen, onClose }) => {
           )}
           
           <label htmlFor="password">Password:</label>
-          <input 
-            type="password" 
-            id="password" 
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required 
-          />
+          <div className="form-group">
+            <div className="password-input-container">
+              <input 
+                type={showPassword ? "text" : "password"} 
+                id="password" 
+                value={password}
+                onChange={handlePasswordChange}
+                className={validationErrors.password ? 'input-error' : ''}
+                required 
+              />
+              <button 
+                type="button" 
+                className="password-toggle" 
+                onClick={togglePasswordVisibility}
+              >
+                <i className={`fa ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+              </button>
+            </div>
+            {validationErrors.password && <div className="error-text">{validationErrors.password}</div>}
+          </div>
           
           <button type="submit" disabled={loading}>
             {loading ? 'Processing...' : (isLogin ? 'Login' : 'Sign Up')}
